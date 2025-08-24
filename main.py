@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status, HTTPException
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
@@ -55,9 +55,27 @@ def again_post(post: Post):
     return {'data': post_dict}
 
 
+@app.get('/find-post/{id}')
+def find_post(id: int, response: Response):
+    for p in my_post:
+        if p['id'] == id:
+            return {'post detail': p}
+    response.status_code = status.HTTP_404_NOT_FOUND
+    return {'message': 'post not found'}
+
+
 @app.get('/my-post/{id}')
 def get_post(id: int):
     for p in my_post:
         if p['id'] == id:
             return {'post detail': p}
     return {'message': 'post not found'}
+
+
+@app.get('posts/{id}')
+def get_post(id: int, response):
+    post = find_post(id)
+    if not post:
+        response.status_code = 404
+        return {'message': 'post not found'}
+    return {'post detail': post}
