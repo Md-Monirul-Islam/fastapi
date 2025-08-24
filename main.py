@@ -53,3 +53,11 @@ def again_post(post: Post):
     post_dict['id'] = randrange(0, 1000000)
     my_post.append(post_dict)
     return {'data': post_dict}
+
+
+@app.get('/my-post/{id}')
+def get_post(id: int):
+    for p in my_post:
+        if p['id'] == id:
+            return {'post detail': p}
+    return {'message': 'post not found'}
