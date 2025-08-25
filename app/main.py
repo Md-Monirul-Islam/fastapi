@@ -18,10 +18,25 @@ class Post(BaseModel):
     rating: Optional[int] = None
 
 
+class Product(BaseModel):
+    name: str
+    code: str
+
+
 try:
     conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='123456Pl@',
                             cursor_factory=psycopg2.extras.DictCursor)
     cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            code VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
     print("Database connection was successful")
 except Exception as error:
     print("Database connection failed")
@@ -35,13 +50,31 @@ async def root():
 
 @app.get('/posts')
 def get_posts():
-    return {"data": "This is your posts data"}
+    posts = cursor.execute('SELECT * FROM products')
+    posts = cursor.fetchall()
+    print(posts)
+    return {"data": posts}
+
+
+@app.post('/post-create')
+def post_create(product: Product = Body(...)):
+    try:
+        cursor.execute("""
+            INSERT INTO products (name, code) 
+            VALUES (%s, %s) 
+            RETURNING *
+        """, (product.name, product.code))
+        new_product = cursor.fetchone()
+        conn.commit()
+        return {"data": new_product}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post('/create-post')
 def create_post(payload: dict = Body(...)):
     print(payload)
-    # return {"message": "Post created successfully", "data": payload}
     return {'new post': f'title: {payload["title"]} content: {payload["content"]}'}
 
 
@@ -49,7 +82,6 @@ def create_post(payload: dict = Body(...)):
 def new_post(new_post: Post):
     print(new_post.rating)
     print(new_post.dict())
-    # return {'new post': f'title: {new_post.title} content: {new_post.content} published: {new_post.published} rating: {new_post.rating}'}
     return {'new post': new_post}
 
 
@@ -100,14 +132,6 @@ def get_post(id: int, response):
         response.status_code = 404
         return {'message': 'post not found'}
     return {'post detail': post}
-
-
-
-# @app.delete('/delete-posts/{id}', status_code=status.HTTP_204_NO_CONTENT)
-# def delete_post(id: int):
-#     index = find_index_post(id)
-#     my_post.pop(index)
-#     return {'message': 'post deleted successfully'}
 
 
 
